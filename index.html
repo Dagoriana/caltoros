@@ -52,7 +52,8 @@ summary{cursor:pointer;color:var(--mut);font-size:14px}
   <input id="q" type="search" inputmode="numeric" placeholder="Número de serie" autocomplete="off" aria-label="Buscar">
   <p class="hint" id="hint">Cargando datos…</p>
   <div id="out"></div>
-  <details class="adm">
+  <p class="hint"><button class="btn" id="admBtn">Administrar</button> <span id="admmsg"></span></p>
+  <details class="adm" hidden>
     <summary>Actualizar datos (para quien mantiene la base)</summary>
     <p>1) Cargá el Excel nuevo (si tiene el mismo nombre que uno ya cargado, lo reemplaza). 2) Guardá data.js (te pregunta la contraseña; si la dejás vacía usa la actual). 3) Reemplazá data.js en la carpeta y volvé a subirla a Netlify. Lo que cargues acá se ve solo en este dispositivo hasta que subas el nuevo data.js.</p>
     <div class="bar">
@@ -74,21 +75,21 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;',
 const fmt=n=>Number(n).toLocaleString('es-AR');
 const fd=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
 const cls=v=>{const s=String(v||'').toLowerCase();if(/tirar|tirado/.test(s))return 'red';if(/rech|^r$/.test(s))return 'amb';return 'grn'};
-let MODE='serie',D=[],BASE=[],META={},PW='',SRC='';const LOADED={};
+let MODE='serie',D=[],BASE=[],META={},PW='',SRC='',ADM='';const LOADED={};
 const rowsOf=j=>Array.isArray(j)?j:((j&&j.filas)||[]);
 async function clave(pw,salt,iter){const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
 const u8=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const b64=u=>{let s='';for(let i=0;i<u.length;i+=32768)s+=String.fromCharCode.apply(null,u.subarray(i,i+32768));return btoa(s)};
 async function abrir(j,pw){const k=await clave(pw,u8(j.salt),j.iter);const p=await crypto.subtle.decrypt({name:'AES-GCM',iv:u8(j.iv)},k,u8(j.datos));return JSON.parse(new TextDecoder().decode(p))}
-async function cifrar(doc,pw){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;const k=await clave(pw,salt,iter);const c=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(JSON.stringify(doc,(a,v)=>v===null?undefined:v)));return {version:2,cifrado:true,iter,salt:b64(salt),iv:b64(iv),datos:b64(new Uint8Array(c)),exportado:doc.exportado}}
+async function cifrar(doc,pw,ap){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;const k=await clave(pw,salt,iter);const c=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(JSON.stringify(doc,(a,v)=>v===null?undefined:v)));return {version:2,cifrado:true,iter,salt:b64(salt),iv:b64(iv),datos:b64(new Uint8Array(c)),exportado:doc.exportado,...(ap?{adm:await cifrar({ok:1},ap).then(t=>({iter:t.iter,salt:t.salt,iv:t.iv,datos:t.datos}))}:{})}}
 async function leer(j){if(j&&j.cifrado){let d;try{d=await abrir(j,PW)}catch(e){const p=prompt('Contraseña de ese archivo:');if(!p)throw new Error('sin contraseña');try{d=await abrir(j,p)}catch(e2){throw new Error('contraseña incorrecta')}}return rowsOf(d)}return rowsOf(j)}
 function tag(a,n){a.forEach(x=>{if(!x.archivo)x.archivo=n});return a}
 let DUP=0;
 function dedup(a){const seen=new Map(),out=[];let n=0;a.forEach(x=>{const key=[x.fecha,x.toro,x.rp,x.partida,x.impresas,x.merma,x.producidas,x.cliente,x.cgs,x.cal].map(v=>v==null?'':v).join('|');if(seen.has(key)&&seen.get(key)!==x.archivo){n++;return}if(!seen.has(key))seen.set(key,x.archivo);out.push(x)});DUP=n;return out}
 function renderFiles(all){const c={};all.forEach(x=>c[x.archivo]=(c[x.archivo]||0)+1);const k=Object.keys(c);
  $('#files').innerHTML=k.length?'<p class="hint">Archivos en la base (con Quitar sacás uno; después guardá data.js):</p>'+k.map(n=>'<div class="frow"><span>'+esc(n)+': '+c[n]+' series</span><button class="btn" data-q="'+esc(n)+'">Quitar</button></div>').join(''):''}
-function refresh(){const k=Object.keys(LOADED);const all=BASE.filter(x=>!(x.archivo in LOADED)).concat(...Object.values(LOADED));D=dedup(all);renderFiles(all);if(!D.length)document.querySelector('details.adm').open=true;
- $('#hint').textContent=D.length+' series cargadas'+(META.exportado&&!k.length?', datos del '+fd(META.exportado)+'.':'.')+(DUP?' Se ocultaron '+DUP+' filas repetidas.':'')+(D.length?'':' La base está vacía: abajo, en «Actualizar datos», cargá tus Excel y guardá data.js.')+' Si una serie aparece más de una vez, se muestran todas.'+(SRC==='respaldo'?' ATENCIÓN: se usó la copia integrada de index.html porque no se encontró data.js; puede estar desactualizada.':'');
+function refresh(){const k=Object.keys(LOADED);const all=BASE.filter(x=>!(x.archivo in LOADED)).concat(...Object.values(LOADED));D=dedup(all);renderFiles(all);
+ $('#hint').textContent=D.length+' series cargadas'+(META.exportado&&!k.length?', datos del '+fd(META.exportado)+'.':'.')+(DUP?' Se ocultaron '+DUP+' filas repetidas.':'')+(D.length?'':' La base está vacía: tocá «Administrar» (abajo de todo), creá tu contraseña de administrador, cargá tus Excel y guardá data.js.')+' Si una serie aparece más de una vez, se muestran todas.'+(SRC==='respaldo'?' ATENCIÓN: se usó la copia integrada de index.html porque no se encontró data.js; puede estar desactualizada.':'');
  $('#src').textContent=k.length?'Cargado en este dispositivo: '+k.join(', ')+'.':'';
  $('#reset').hidden=!k.length;go()}
 function go(){const v=$('#q').value.trim();const out=$('#out');
@@ -136,10 +137,10 @@ $('#file').onchange=async e=>{const fs=[...e.target.files];if(!fs.length)return;
  refresh();if(bad.length)$('#src').textContent+=' No se pudo leer: '+bad.join('; ')+'.';e.target.value=''};
 $('#files').onclick=e=>{const b=e.target.closest('button[data-q]');if(!b)return;const n=b.dataset.q;delete LOADED[n];BASE=BASE.filter(x=>x.archivo!==n);refresh()};
 $('#reset').onclick=()=>{for(const k in LOADED)delete LOADED[k];refresh()};
-$('#exp').onclick=async()=>{let p=prompt('Contraseña para el nuevo data.js (dejá vacío para usar la misma de ahora):','');if(p===null)return;p=p||PW;
- try{const o=await cifrar({exportado:new Date().toISOString(),filas:D},p);
+$('#exp').onclick=async()=>{let p=prompt('Contraseña para el nuevo data.js (dejá vacío para usar la misma de ahora):','');if(p===null)return;p=p||PW;let q=prompt('Contraseña de administrador (dejá vacío para usar la misma de ahora):','');if(q===null)return;q=q||ADM;
+ try{const o=await cifrar({exportado:new Date().toISOString(),filas:D},p,q);
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['window.DATA_CIFRADA='+JSON.stringify(o)+';'],{type:'text/javascript'}));a.download='data.js';document.body.appendChild(a);a.click();a.remove();
-  $('#src').textContent='Se guardó data.js con '+D.length+' series.'+(p!==PW?' Contraseña nueva: anotala, todos la necesitan para entrar.':'')+' Copialo a la carpeta de la app (reemplazando el data.js anterior) y volvé a subir la carpeta.'}
+  $('#src').textContent='Se guardó data.js con '+D.length+' series.'+(p!==PW?' Contraseña nueva: anotala, todos la necesitan para entrar.':'')+(q!==ADM?' Contraseña de administrador nueva: anotala.':'')+' Copialo a la carpeta de la app (reemplazando el data.js anterior) y volvé a subir la carpeta.'}
  catch(e){$('#src').textContent='No se pudo guardar: '+e.message}};
 let ENC=null;
 function cargarCifrado(){return new Promise(res=>{const s=document.createElement('script');s.src=location.protocol==='file:'?'data.js':'data.js?v='+Date.now();s.onload=()=>res(window.DATA_CIFRADA||null);s.onerror=()=>res(null);document.head.appendChild(s)}).then(j=>{if(j&&j.cifrado){SRC='data.js';return j}try{const r=JSON.parse($('#respaldo').textContent);if(r&&r.cifrado){SRC='respaldo';return r}}catch(e){}return null})}
@@ -150,6 +151,11 @@ async function entrar(pw,auto){if(!pw)return false;$('#lmsg').textContent=auto?'
   $('#lock').hidden=true;$('#app').hidden=false;refresh();return true}
  catch(e){$('#lmsg').textContent=auto?'':'Contraseña incorrecta, o los datos no están disponibles.';if(auto){try{localStorage.removeItem('pwtoros')}catch(_){}}return false}}
 cargarCifrado().then(j=>{ENC=j;if(!j)$('#lockmsg').textContent='Todavía no hay datos. La contraseña que escribas ahora será la de tu base. Después cargá tus Excel y guardá data.js.'});
+async function admin(){const m=$('#admmsg');m.textContent='';
+ if(ENC&&ENC.adm){const p=prompt('Contraseña de administrador:');if(!p)return;try{const d=await abrir(ENC.adm,p);if(!d.ok)throw 0;ADM=p}catch(e){m.textContent='Contraseña de administrador incorrecta.';return}}
+ else{const p=prompt('Todavía no hay contraseña de administrador. Creá una (la vas a necesitar cada vez que entres a Administrar):');if(!p)return;ADM=p}
+ const d=document.querySelector('details.adm');d.hidden=false;d.open=true;$('#admBtn').hidden=true}
+$('#admBtn').onclick=admin;
 $('#salir').onclick=()=>{try{localStorage.removeItem('pwtoros')}catch(e){}location.reload()};
 $('#go').onclick=()=>entrar($('#pw').value,false);
 $('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')entrar($('#pw').value,false)});
