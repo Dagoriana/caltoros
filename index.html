@@ -38,6 +38,8 @@ summary{cursor:pointer;color:var(--mut);font-size:14px}
 .adm p{color:var(--mut);font-size:14px;margin:8px 0}
 #pw{width:100%;font:inherit;font-size:20px;padding:12px 14px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);margin-bottom:10px}#pw:focus{outline:none;border-color:var(--acc)}.rec{display:flex;gap:8px;align-items:center;color:var(--mut);font-size:14px;margin-bottom:12px}#lmsg{color:var(--red);font-size:14px;margin:8px 0 0}[hidden]{display:none!important}
 .frow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.fx{color:var(--ink);font-weight:600}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px 12px;margin-top:10px}.info div{font-weight:500;font-size:15px}.info span{display:block;font-size:12px;font-weight:400;color:var(--mut)}
 </style>
 </head>
 <body>
@@ -96,7 +98,7 @@ function go(){const v=$('#q').value.trim();const out=$('#out');
  if(!v){out.innerHTML='';return}
  const T=MODE==='toro',nv=norm(v);
  let r=T?D.filter(x=>norm(x.toro).includes(nv)||String(x.rp)===v):D.filter(x=>String(x.partida)===v);const all=r;
- if(T){r=[...r].sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));if(r.length>60)r=r.slice(0,60)}
+ if(T){r=[...r].sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));if(r.length>100)r=r.slice(0,100)}
  if(!r.length){out.innerHTML='<p class="none">No encontré '+(T?'el toro ':'la serie ')+esc(v)+'.</p>';return}
  const multi=new Set(D.map(x=>x.archivo)).size>1;
  const head=T?'<p class="sum"><b>'+all.length+'</b> series de '+new Set(all.map(x=>x.toro)).size+' toro(s), <b>'+fmt(all.reduce((a,x)=>a+(+x.producidas||0),0))+'</b> dosis producidas'+(all.length>r.length?'. Se muestran las '+r.length+' más recientes.':'')+'</p>':'';
@@ -106,7 +108,7 @@ function go(){const v=$('#q').value.trim();const out=$('#out');
   const otras=[x.com,x.req&&'FCV requiere: '+x.req,x.fcv&&'FCV: '+x.fcv,x.destino&&'Destino: '+x.destino,x.lbt&&'LBT: '+x.lbt,x.fact&&'Facturado: '+x.fact].filter(Boolean).join('\n');
   const lt=[x.lugar,x.tecnico&&'Técnico: '+x.tecnico,x.raza,x.color&&'Paj. '+x.color].filter(Boolean).join(', ');
   return '<div class="card"><div class="head"><div class="toro">'+esc(x.toro||'Sin toro')+(x.rp?' (RP '+esc(x.rp)+')':'')+'</div><div class="qty">'+(q!=null?fmt(q):'—')+'<small>dosis producidas</small></div></div>'
-   +'<div class="meta">Serie '+esc(x.partida)+', '+f+(x.cliente?', '+esc(x.cliente):'')+(x.impresas!=null?', impresas '+fmt(x.impresas):'')+(x.merma!=null?', merma '+fmt(x.merma):'')+(multi?', archivo '+esc(x.archivo):'')+'</div>'
+   +'<div class="info">'+[['Fecha',f],['Serie',x.partida],['Cliente',x.cliente],['Impresas',x.impresas!=null?fmt(x.impresas):null],['Merma',x.merma!=null?fmt(x.merma):null],['Archivo',multi?x.archivo:null]].filter(a=>a[1]!=null&&a[1]!=='').map(a=>'<div><span>'+a[0]+'</span>'+esc(a[1])+'</div>').join('')+'</div>'
    +(lt?'<div class="meta">'+esc(lt)+'</div>':'')
    +(x.cgs?'<span class="tag '+cls(x.cgs)+'">'+esc(x.cgs)+'</span>':'')
    +(x.cal?'<div class="cal"><b>Comentario de calidad</b>'+esc(x.cal)+'</div>':'<div class="meta">Sin comentario de calidad.</div>')
