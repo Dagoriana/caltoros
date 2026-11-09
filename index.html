@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0E6A68">
+<title>Producción de toros</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#F1F4F3;--card:#fff;--ink:#16262B;--mut:#5C6E73;--line:#D5DDDC;--acc:#0E6A68;--accbg:#DDEFEE;--red:#A8322A;--redbg:#F8E1DE;--amb:#8A5A00;--ambbg:#FBEBC8;--grn:#1F6B3A;--grnbg:#DDF0E2;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1A1D;--card:#162428;--ink:#E4EDEC;--mut:#93A7AB;--line:#2A3C40;--acc:#5CC4C0;--accbg:#17383A;--red:#F29A92;--redbg:#3A1E1C;--amb:#EBC06A;--ambbg:#3A2D12;--grn:#8FD3A4;--grnbg:#173323;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--ink);font:16px/1.45 "IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+main{max-width:600px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:20px;font-weight:600;margin:0 0 12px}
+#q{width:100%;font:inherit;font-size:26px;font-weight:600;padding:13px 16px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+#q:focus{outline:none;border-color:var(--acc)}
+.bar{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+.btn{font:inherit;font-size:14px;padding:7px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--acc)}.btn.on{background:var(--accbg);border-color:var(--acc)}
+.btn:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.hint{color:var(--mut);font-size:14px;margin:8px 0 14px}
+.sum{margin:0 0 10px;color:var(--mut)}.sum b{color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.toro{font-size:21px;font-weight:600}
+.qty{font-size:26px;font-weight:600;color:var(--acc);font-variant-numeric:tabular-nums;text-align:right;line-height:1.1}
+.qty small{display:block;font-size:12px;font-weight:400;color:var(--mut)}
+.meta{color:var(--mut);font-size:14px;margin-top:4px}
+.cal{margin-top:10px;padding:8px 10px;border-radius:8px;background:var(--accbg);white-space:pre-line;font-size:15px}
+.cal b{display:block;font-size:12px;font-weight:500;color:var(--mut);margin-bottom:2px}
+.tag{display:inline-block;padding:1px 9px;border-radius:999px;font-size:13px;font-weight:600;margin-top:8px}
+.red{background:var(--redbg);color:var(--red)}.amb{background:var(--ambbg);color:var(--amb)}.grn{background:var(--grnbg);color:var(--grn)}
+.none{color:var(--mut);padding:8px 0}
+details{margin-top:28px;border-top:1px solid var(--line);padding-top:12px}
+summary{cursor:pointer;color:var(--mut);font-size:14px}
+.adm p{color:var(--mut);font-size:14px;margin:8px 0}
+#pw{width:100%;font:inherit;font-size:20px;padding:12px 14px;border:2px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);margin-bottom:10px}#pw:focus{outline:none;border-color:var(--acc)}.rec{display:flex;gap:8px;align-items:center;color:var(--mut);font-size:14px;margin-bottom:12px}#lmsg{color:var(--red);font-size:14px;margin:8px 0 0}[hidden]{display:none!important}
+.frow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <section id="lock"><h1>Producción de toros</h1><p class="hint" id="lockmsg">Ingresá la contraseña para ver los datos.</p>
+    <input id="pw" type="password" autocomplete="current-password" placeholder="Contraseña" aria-label="Contraseña">
+    <label class="rec"><input type="checkbox" id="rec"> Recordar en este dispositivo</label>
+    <button class="btn on" id="go">Entrar</button><p id="lmsg"></p></section>
+  <div id="app" hidden>
+  <h1>Producción de toros</h1>
+  <div class="bar"><button class="btn on" id="mS">Por serie</button><button class="btn" id="mT">Por toro</button><button class="btn" id="salir">Salir</button></div>
+  <input id="q" type="search" inputmode="numeric" placeholder="Número de serie" autocomplete="off" aria-label="Buscar">
+  <p class="hint" id="hint">Cargando datos…</p>
+  <div id="out"></div>
+  <details class="adm">
+    <summary>Actualizar datos (para quien mantiene la base)</summary>
+    <p>1) Cargá el Excel nuevo (si tiene el mismo nombre que uno ya cargado, lo reemplaza). 2) Guardá data.js (te pregunta la contraseña; si la dejás vacía usa la actual). 3) Reemplazá data.js en la carpeta y volvé a subirla a Netlify. Lo que cargues acá se ve solo en este dispositivo hasta que subas el nuevo data.js.</p>
+    <div class="bar">
+      <label class="btn" for="file">Cargar Excel o data.js/.json</label>
+      <input id="file" type="file" accept=".xlsx,.xlsm,.xls,.json,.js" multiple hidden>
+      <button class="btn" id="exp">Guardar data.js</button>
+      <button class="btn" id="reset" hidden>Quitar lo cargado</button>
+    </div>
+    <p id="src"></p>
+    <div id="files"></div>
+  </details>
+  </div>
+</main>
+<script id="respaldo" type="application/json"></script>
+<script>
+const $=s=>document.querySelector(s);
+const norm=s=>String(s==null?'':s).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt=n=>Number(n).toLocaleString('es-AR');
+const fd=s=>s?String(s).slice(0,10).split('-').reverse().join('/'):'';
+const cls=v=>{const s=String(v||'').toLowerCase();if(/tirar|tirado/.test(s))return 'red';if(/rech|^r$/.test(s))return 'amb';return 'grn'};
+let MODE='serie',D=[],BASE=[],META={},PW='',SRC='';const LOADED={};
+const rowsOf=j=>Array.isArray(j)?j:((j&&j.filas)||[]);
+async function clave(pw,salt,iter){const km=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:iter,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+const u8=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const b64=u=>{let s='';for(let i=0;i<u.length;i+=32768)s+=String.fromCharCode.apply(null,u.subarray(i,i+32768));return btoa(s)};
+async function abrir(j,pw){const k=await clave(pw,u8(j.salt),j.iter);const p=await crypto.subtle.decrypt({name:'AES-GCM',iv:u8(j.iv)},k,u8(j.datos));return JSON.parse(new TextDecoder().decode(p))}
+async function cifrar(doc,pw){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),iter=250000;const k=await clave(pw,salt,iter);const c=await crypto.subtle.encrypt({name:'AES-GCM',iv},k,new TextEncoder().encode(JSON.stringify(doc,(a,v)=>v===null?undefined:v)));return {version:2,cifrado:true,iter,salt:b64(salt),iv:b64(iv),datos:b64(new Uint8Array(c)),exportado:doc.exportado}}
+async function leer(j){if(j&&j.cifrado){let d;try{d=await abrir(j,PW)}catch(e){const p=prompt('Contraseña de ese archivo:');if(!p)throw new Error('sin contraseña');try{d=await abrir(j,p)}catch(e2){throw new Error('contraseña incorrecta')}}return rowsOf(d)}return rowsOf(j)}
+function tag(a,n){a.forEach(x=>{if(!x.archivo)x.archivo=n});return a}
+let DUP=0;
+function dedup(a){const seen=new Map(),out=[];let n=0;a.forEach(x=>{const key=[x.fecha,x.toro,x.rp,x.partida,x.impresas,x.merma,x.producidas,x.cliente,x.cgs,x.cal].map(v=>v==null?'':v).join('|');if(seen.has(key)&&seen.get(key)!==x.archivo){n++;return}if(!seen.has(key))seen.set(key,x.archivo);out.push(x)});DUP=n;return out}
+function renderFiles(all){const c={};all.forEach(x=>c[x.archivo]=(c[x.archivo]||0)+1);const k=Object.keys(c);
+ $('#files').innerHTML=k.length?'<p class="hint">Archivos en la base (con Quitar sacás uno; después guardá data.js):</p>'+k.map(n=>'<div class="frow"><span>'+esc(n)+': '+c[n]+' series</span><button class="btn" data-q="'+esc(n)+'">Quitar</button></div>').join(''):''}
+function refresh(){const k=Object.keys(LOADED);const all=BASE.filter(x=>!(x.archivo in LOADED)).concat(...Object.values(LOADED));D=dedup(all);renderFiles(all);if(!D.length)document.querySelector('details.adm').open=true;
+ $('#hint').textContent=D.length+' series cargadas'+(META.exportado&&!k.length?', datos del '+fd(META.exportado)+'.':'.')+(DUP?' Se ocultaron '+DUP+' filas repetidas.':'')+(D.length?'':' La base está vacía: abajo, en «Actualizar datos», cargá tus Excel y guardá data.js.')+' Si una serie aparece más de una vez, se muestran todas.'+(SRC==='respaldo'?' ATENCIÓN: se usó la copia integrada de index.html porque no se encontró data.js; puede estar desactualizada.':'');
+ $('#src').textContent=k.length?'Cargado en este dispositivo: '+k.join(', ')+'.':'';
+ $('#reset').hidden=!k.length;go()}
+function go(){const v=$('#q').value.trim();const out=$('#out');
+ if(!v){out.innerHTML='';return}
+ const T=MODE==='toro',nv=norm(v);
+ let r=T?D.filter(x=>norm(x.toro).includes(nv)||String(x.rp)===v):D.filter(x=>String(x.partida)===v);const all=r;
+ if(T){r=[...r].sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));if(r.length>60)r=r.slice(0,60)}
+ if(!r.length){out.innerHTML='<p class="none">No encontré '+(T?'el toro ':'la serie ')+esc(v)+'.</p>';return}
+ const multi=new Set(D.map(x=>x.archivo)).size>1;
+ const head=T?'<p class="sum"><b>'+all.length+'</b> series de '+new Set(all.map(x=>x.toro)).size+' toro(s), <b>'+fmt(all.reduce((a,x)=>a+(+x.producidas||0),0))+'</b> dosis producidas'+(all.length>r.length?'. Se muestran las '+r.length+' más recientes.':'')+'</p>':'';
+ out.innerHTML=head+r.map(x=>{
+  const f=x.fecha?fd(x.fecha):'Sin fecha ('+(x.hoja||'')+')';
+  const q=x.producidas!=null?x.producidas:x.impresas;
+  const otras=[x.com,x.req&&'FCV requiere: '+x.req,x.fcv&&'FCV: '+x.fcv,x.destino&&'Destino: '+x.destino,x.lbt&&'LBT: '+x.lbt,x.fact&&'Facturado: '+x.fact].filter(Boolean).join('\n');
+  const lt=[x.lugar,x.tecnico&&'Técnico: '+x.tecnico,x.raza,x.color&&'Paj. '+x.color].filter(Boolean).join(', ');
+  return '<div class="card"><div class="head"><div class="toro">'+esc(x.toro||'Sin toro')+(x.rp?' (RP '+esc(x.rp)+')':'')+'</div><div class="qty">'+(q!=null?fmt(q):'—')+'<small>dosis producidas</small></div></div>'
+   +'<div class="meta">Serie '+esc(x.partida)+', '+f+(x.cliente?', '+esc(x.cliente):'')+(x.impresas!=null?', impresas '+fmt(x.impresas):'')+(x.merma!=null?', merma '+fmt(x.merma):'')+(multi?', archivo '+esc(x.archivo):'')+'</div>'
+   +(lt?'<div class="meta">'+esc(lt)+'</div>':'')
+   +(x.cgs?'<span class="tag '+cls(x.cgs)+'">'+esc(x.cgs)+'</span>':'')
+   +(x.cal?'<div class="cal"><b>Comentario de calidad</b>'+esc(x.cal)+'</div>':'<div class="meta">Sin comentario de calidad.</div>')
+   +(otras?'<div class="cal"><b>Otras notas</b>'+esc(otras)+'</div>':'')
+   +'</div>'}).join('')}
+function setMode(m){MODE=m;$('#mS').classList.toggle('on',m==='serie');$('#mT').classList.toggle('on',m==='toro');const q=$('#q');q.placeholder=m==='toro'?'Nombre del toro o RP':'Número de serie';q.inputMode=m==='toro'?'text':'numeric';q.value='';q.focus();go()}
+$('#mS').onclick=()=>setMode('serie');$('#mT').onclick=()=>setMode('toro');$('#q').addEventListener('input',go);
+function parse(wb,fn){const out=[];wb.SheetNames.forEach(n=>{const ws=wb.Sheets[n];if(!ws||!ws['!ref'])return;const r0=XLSX.utils.decode_range(ws['!ref']).s.r;
+ const a=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+ const h=a.findIndex(r=>r.some(c=>String(c).trim().toUpperCase()==='FECHA'));if(h<0)return;
+ const H=a[h].map(c=>String(c==null?'':c).trim().toUpperCase());
+ const ix=(k,nth)=>{let f=-1;for(let j=0;j<H.length;j++)if(H[j]===k&&++f===(nth||0))return j;return -1};
+ const g=(r,k,nth)=>{const i=ix(k,nth);if(i<0)return null;let v=r[i];if(typeof v==='string'){v=v.trim().replace(/\s+/g,' ');if(!v)return null}return v==null?null:v};
+ const up=v=>v==null?null:String(v).trim().toUpperCase();
+ a.slice(h+1).forEach((r,ri)=>{const p=g(r,'PARTIDA');if(p==null||isNaN(+p))return;
+  let f=g(r,'FECHA');f=typeof f==='number'?new Date(Math.round((f-25569)*864e5)).toISOString().slice(0,10):null;
+  const cal=[],com=[];H.forEach((hh,j)=>{const c=ws[XLSX.utils.encode_cell({r:h+1+ri+r0,c:j})];if(!c||!c.c||!c.c.length)return;
+   const x=c.c.map(y=>String(y.t||'').split('\n').map(s=>s.trim()).filter(Boolean).join('\n')).filter(Boolean).join('\n');if(!x)return;
+   if(hh==='PRODUCIDAS'||(hh==='APROBADA'&&j===ix('APROBADA',0)))cal.push(x);else com.push(hh+': '+x)});
+  out.push({hoja:n,fecha:f,raza:g(r,'RAZA'),color:g(r,'COLOR PAJ'),rp:g(r,'RP'),toro:up(g(r,'TORO')),tecnico:g(r,'TECNICO'),cliente:g(r,'CLIENTE'),lugar:g(r,'LUGAR EXTRACCION'),partida:p,impresas:g(r,'IMPRESAS'),merma:g(r,'MERMA'),producidas:g(r,'PRODUCIDAS'),cgs:up(g(r,'APROBADA',0)),req:g(r,'REQUIERE'),fcv:g(r,'APROBADA',1),destino:g(r,'DESTINO'),lbt:g(r,'APROBADO LBT'),fact:g(r,'FACTURADO'),cal:cal.join('\n')||null,com:com.join('\n')||null,archivo:fn})})});
+ return out}
+$('#file').onchange=async e=>{const fs=[...e.target.files];if(!fs.length)return;const bad=[];
+ for(const f of fs){try{
+  if(/\.(json|js)$/i.test(f.name)){const fl=await leer(JSON.parse((await f.text()).replace(/^\s*window\.DATA_CIFRADA\s*=\s*/,'').replace(/;\s*$/,'')));if(!fl.length)throw new Error('no es una base válida');const gr={};fl.forEach(x=>{if(x&&x.partida!=null){const k=x.archivo||f.name;(gr[k]=gr[k]||[]).push(x)}});Object.assign(LOADED,gr);continue}
+  if(typeof XLSX==='undefined')throw new Error('no se cargó el lector de Excel');
+  const rows=parse(XLSX.read(await f.arrayBuffer(),{type:'array'}),f.name);
+  if(!rows.length)throw new Error('no hay filas con serie');LOADED[f.name]=rows}catch(err){bad.push(f.name+' ('+err.message+')')}}
+ refresh();if(bad.length)$('#src').textContent+=' No se pudo leer: '+bad.join('; ')+'.';e.target.value=''};
+$('#files').onclick=e=>{const b=e.target.closest('button[data-q]');if(!b)return;const n=b.dataset.q;delete LOADED[n];BASE=BASE.filter(x=>x.archivo!==n);refresh()};
+$('#reset').onclick=()=>{for(const k in LOADED)delete LOADED[k];refresh()};
+$('#exp').onclick=async()=>{let p=prompt('Contraseña para el nuevo data.js (dejá vacío para usar la misma de ahora):','');if(p===null)return;p=p||PW;
+ try{const o=await cifrar({exportado:new Date().toISOString(),filas:D},p);
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['window.DATA_CIFRADA='+JSON.stringify(o)+';'],{type:'text/javascript'}));a.download='data.js';document.body.appendChild(a);a.click();a.remove();
+  $('#src').textContent='Se guardó data.js con '+D.length+' series.'+(p!==PW?' Contraseña nueva: anotala, todos la necesitan para entrar.':'')+' Copialo a la carpeta de la app (reemplazando el data.js anterior) y volvé a subir la carpeta.'}
+ catch(e){$('#src').textContent='No se pudo guardar: '+e.message}};
+let ENC=null;
+function cargarCifrado(){return new Promise(res=>{const s=document.createElement('script');s.src=location.protocol==='file:'?'data.js':'data.js?v='+Date.now();s.onload=()=>res(window.DATA_CIFRADA||null);s.onerror=()=>res(null);document.head.appendChild(s)}).then(j=>{if(j&&j.cifrado){SRC='data.js';return j}try{const r=JSON.parse($('#respaldo').textContent);if(r&&r.cifrado){SRC='respaldo';return r}}catch(e){}return null})}
+async function entrar(pw,auto){if(!pw)return false;$('#lmsg').textContent=auto?'':'Verificando…';
+ try{if(!ENC)ENC=await cargarCifrado();const doc=ENC?await abrir(ENC,pw):{filas:[]};PW=pw;META=doc;
+  BASE=tag(rowsOf(doc).filter(x=>x&&x.partida!=null),'PRODUCCION_2026.xlsx');
+  try{if($('#rec').checked)localStorage.setItem('pwtoros',pw);else localStorage.removeItem('pwtoros')}catch(e){}
+  $('#lock').hidden=true;$('#app').hidden=false;refresh();return true}
+ catch(e){$('#lmsg').textContent=auto?'':'Contraseña incorrecta, o los datos no están disponibles.';if(auto){try{localStorage.removeItem('pwtoros')}catch(_){}}return false}}
+cargarCifrado().then(j=>{ENC=j;if(!j)$('#lockmsg').textContent='Todavía no hay datos. La contraseña que escribas ahora será la de tu base. Después cargá tus Excel y guardá data.js.'});
+$('#salir').onclick=()=>{try{localStorage.removeItem('pwtoros')}catch(e){}location.reload()};
+$('#go').onclick=()=>entrar($('#pw').value,false);
+$('#pw').addEventListener('keydown',e=>{if(e.key==='Enter')entrar($('#pw').value,false)});
+(async()=>{let p=null;try{p=localStorage.getItem('pwtoros')}catch(e){}if(p)entrar(p,true)})();
+</script>
+</body>
+</html>
