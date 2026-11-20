@@ -101,10 +101,11 @@ function refresh(){const k=Object.keys(LOADED);const all=BASE.filter(x=>!(x.arch
  $('#hint').textContent=D.length+' series cargadas'+(META.exportado&&!k.length?', datos del '+fd(META.exportado)+'.':'.')+(DUP?' Se ocultaron '+DUP+' filas repetidas.':'')+(D.length?'':' La base está vacía: tocá «Administrar» (abajo de todo), creá tu contraseña de administrador, cargá tus Excel y guardá data.js.')+' Si una serie aparece más de una vez, se muestran todas.'+(SRC==='respaldo'?' ATENCIÓN: se usó la copia integrada de index.html porque no se encontró data.js; puede estar desactualizada.':'');
  $('#src').textContent=k.length?'Cargado en este dispositivo: '+k.join(', ')+'.':'';
  $('#reset').hidden=!k.length;go()}
+function serieOK(x,v){const p=String(x.partida).trim().toLowerCase(),q=v.toLowerCase();return p===q||(/^\d+$/.test(q)&&parseInt(p,10)===+q)}
 function go(){const v=$('#q').value.trim();const out=$('#out');
  if(!v){out.innerHTML='';return}
  const T=MODE==='toro',nv=norm(v);
- let r=T?D.filter(x=>norm(x.toro).includes(nv)||String(x.rp)===v):D.filter(x=>String(x.partida)===v);const all=r;
+ let r=T?D.filter(x=>norm(x.toro).includes(nv)||String(x.rp)===v):D.filter(x=>serieOK(x,v));const all=r;
  if(T){r=[...r].sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||'')));if(r.length>100)r=r.slice(0,100)}
  if(!r.length){out.innerHTML='<p class="none">No encontré '+(T?'el toro ':'la serie ')+esc(v)+'.</p>';return}
  const multi=new Set(D.map(x=>x.archivo)).size>1;
@@ -125,13 +126,13 @@ function setMode(m){MODE=m;$('#mS').classList.toggle('on',m==='serie');$('#mT').
 $('#mS').onclick=()=>setMode('serie');$('#mT').onclick=()=>setMode('toro');$('#q').addEventListener('input',go);
 function parse(wb,fn){const out=[];wb.SheetNames.forEach(n=>{const ws=wb.Sheets[n];if(!ws||!ws['!ref'])return;const r0=XLSX.utils.decode_range(ws['!ref']).s.r;
  const a=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
- const h=a.findIndex(r=>r.some(c=>String(c).trim().toUpperCase()==='FECHA'));if(h<0)return;
+ const h=a.findIndex(r=>r.some(c=>String(c).trim().toUpperCase()==='PARTIDA'));if(h<0)return;
  const H=a[h].map(c=>String(c==null?'':c).trim().toUpperCase());
  const ix=(k,nth)=>{let f=-1;for(let j=0;j<H.length;j++)if(H[j]===k&&++f===(nth||0))return j;return -1};
  const g=(r,k,nth)=>{const i=ix(k,nth);if(i<0)return null;let v=r[i];if(typeof v==='string'){v=v.trim().replace(/\s+/g,' ');if(!v)return null}return v==null?null:v};
  const up=v=>v==null?null:String(v).trim().toUpperCase();
- a.slice(h+1).forEach((r,ri)=>{const p=g(r,'PARTIDA');if(p==null||isNaN(+p))return;
-  let f=g(r,'FECHA');f=typeof f==='number'?new Date(Math.round((f-25569)*864e5)).toISOString().slice(0,10):null;
+ a.slice(h+1).forEach((r,ri)=>{const p=g(r,'PARTIDA');if(p==null||!/^\d/.test(String(p).trim()))return;
+  let f=ix('FECHA')<0?r[0]:g(r,'FECHA');f=typeof f==='number'?new Date(Math.round((f-25569)*864e5)).toISOString().slice(0,10):null;
   const cal=[],com=[];H.forEach((hh,j)=>{const c=ws[XLSX.utils.encode_cell({r:h+1+ri+r0,c:j})];if(!c||!c.c||!c.c.length)return;
    const x=c.c.map(y=>String(y.t||'').split('\n').map(s=>s.trim()).filter(Boolean).join('\n')).filter(Boolean).join('\n');if(!x)return;
    if(hh==='PRODUCIDAS'||(hh==='APROBADA'&&j===ix('APROBADA',0)))cal.push(x);else com.push(hh+': '+x)});
